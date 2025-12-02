@@ -1,55 +1,39 @@
-// src/test/java/ru/netology/web/page/DashBoardPage.java
 package ru.netology.web.page;
 
-import com.codeborne.selenide.Condition;
 import com.codeborne.selenide.ElementsCollection;
 import com.codeborne.selenide.SelenideElement;
 
 import java.time.Duration;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
-import static com.codeborne.selenide.Condition.text;
-import static com.codeborne.selenide.Condition.visible;
 import static com.codeborne.selenide.Selenide.*;
+import static com.codeborne.selenide.Condition.*;
 
 public class DashBoardPage {
-    private final SelenideElement dashboardHeading = $("[data-test-id=dashboard]");
-    private final ElementsCollection cards = $$(".list li"); // Находим все элементы карточек li с классом .list__item
+    private ElementsCollection cards = $$(".list li");
     private final String balanceStart = "баланс: ";
     private final String balanceFinish = " р.";
-
     public DashBoardPage() {
-        dashboardHeading.shouldBe(visible, Duration.ofSeconds(10)); // Явное ожидание дашборда
+        $("[data-test-id=dashboard]").shouldBe(visible, Duration.ofSeconds(5));
     }
 
-    // Метод для получения баланса карты по ее последним 4 цифрам
-    public int getCardBalance(String lastFourDigits) {
-        String balanceText = cards.findBy(text(lastFourDigits)).text();
-        return extractBalance(balanceText);
+    public int getCardBalance(String cardNumber) {
+        SelenideElement card = cards.findBy(text(cardNumber.substring(cardNumber.length()-4)));
+        card.shouldBe(visible, Duration.ofSeconds(5));
+        String text = card.text();
+        return extractBalance(text);
     }
 
-    // Метод для выбора карты для пополнения (перехода на TransferPage)
-    public TransferPage selectCardToTransfer(String lastFourDigitsOfDestinationCard) {
-        // Находим элемент кнопки "Пополнить" для нужной карты
-        cards.findBy(text(lastFourDigitsOfDestinationCard))
-                .$("[data-test-id='action-deposit']") // Кнопка "Пополнить"
-                .click();
-        return new TransferPage();
+    public MoneyTransferPage selectCardToTransfer(String cardNumber) {
+        SelenideElement card = cards.findBy(text(cardNumber.substring(cardNumber.length()-4)));
+        card.$("button").click();
+        return new MoneyTransferPage();
     }
 
-    // Вспомогательный метод для извлечения баланса из строки
     private int extractBalance(String text) {
-        Matcher matcher = Pattern.compile(balanceStart + "(-?\\d+)" + balanceFinish).matcher(text);
-        if (matcher.find()) {
-            return Integer.parseInt(matcher.group(1));
-        }
-        throw new IllegalStateException("Не удалось извлечь баланс из текста: " + text);
-    }
-
-    // Метод для получения информации о карте по ее индексу (для удобства)
-    public SelenideElement getCardElementByIndex(int index) {
-        return cards.get(index);
+        int start = text.indexOf(balanceStart);
+        int finish = text.indexOf(balanceFinish);
+        String value = text.substring(start + balanceStart.length(), finish).replaceAll("\\s", "");
+        return Integer.parseInt(value);
     }
 }
 
