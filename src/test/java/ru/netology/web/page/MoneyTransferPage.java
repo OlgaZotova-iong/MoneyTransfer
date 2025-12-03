@@ -12,14 +12,11 @@ public class MoneyTransferPage {
     private SelenideElement errorNotification = $("[data-test-id=error-notification]");
 
     public DashBoardPage validTransfer(int amount, String fromCardNumber) {
+        amountField.clear(); // ОЧИЩАЕМ поле перед вводом!
         amountField.setValue(String.valueOf(amount));
         fromField.setValue(fromCardNumber);
         transferButton.click();
         return new DashBoardPage();
-    }
-
-    public SelenideElement getErrorNotification() {
-        return errorNotification;
     }
 
     public void shouldShowError(String expectedText) {

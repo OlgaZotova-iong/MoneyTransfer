@@ -6,81 +6,73 @@ import ru.netology.web.page.*;
 
 import static com.codeborne.selenide.Selenide.*;
 
-public class MoneyTransferTest {
+class MoneyTransferTest {
+    DashBoardPage dashboardPage;
 
     @BeforeEach
-    void openWebApp() {
+    void setUp() {
         open("http://localhost:9999");
+        var loginPage = new LoginPage();
+        var authInfo = DataHelper.getAuthInfo();
+        var verificationPage = loginPage.validLogin(authInfo);
+        var verificationCode = DataHelper.getVerificationCodeFor(authInfo);
+        dashboardPage = verificationPage.validVerify(verificationCode);
     }
 
     @Test
-    @DisplayName("Перевод между счетами: фиксируем попытку, не требуем изменения баланса")
-    void transferBetweenCardsWithKnownBugs() {
-        var loginPage = new LoginPage();
-        var auth = DataHelper.getAuthInfo();
-        var verificationPage = loginPage.validLogin(auth);
-        var code = DataHelper.getVerificationCodeFor(auth);
-        var dashboardPage = verificationPage.validVerify(code);
+    @DisplayName("Успешный перевод с первой карты на вторую")
+    void shouldTransferMoneyFromFirstToSecondCard() {
+        var firstCard = DataHelper.getFirstCardInfo();
+        var secondCard = DataHelper.getSecondCardInfo();
 
-        var cardFrom = DataHelper.getFirstCardInfo();
-        var cardTo = DataHelper.getSecondCardInfo();
+        int amount = DataHelper.generateValidAmount(dashboardPage.getCardBalance(firstCard.getNumber()));
+        int initialFirstBalance = dashboardPage.getCardBalance(firstCard.getNumber());
+        int initialSecondBalance = dashboardPage.getCardBalance(secondCard.getNumber());
 
-        int balanceFromBefore = dashboardPage.getCardBalance(cardFrom.getNumber());
-        int balanceToBefore = dashboardPage.getCardBalance(cardTo.getNumber());
+        var transferPage = dashboardPage.selectCardToTransfer(secondCard.getNumber());
+        dashboardPage = transferPage.validTransfer(amount, firstCard.getNumber());
 
-        int transferAmount = DataHelper.generateValidAmount(balanceFromBefore);
+        int expectedFirstBalance = initialFirstBalance - amount;
+        int expectedSecondBalance = initialSecondBalance + amount;
 
-        var transferPage = dashboardPage.selectCardToTransfer(cardTo.getNumber());
-        dashboardPage = transferPage.validTransfer(transferAmount, cardFrom.getNumber());
-
-        dashboardPage = new DashBoardPage();
-
-        int balanceFromAfter = dashboardPage.getCardBalance(cardFrom.getNumber());
-        int balanceToAfter = dashboardPage.getCardBalance(cardTo.getNumber());
-
-        // Просто логируем факт попытки, не проверяем изменение баланса из-за известных багов
-        System.out.printf("Баланс отправителя был: %d, стал: %d%n", balanceFromBefore, balanceFromAfter);
-        System.out.printf("Баланс получателя был: %d, стал: %d%n", balanceToBefore, balanceToAfter);
-        // Тест всегда проходит
-        Assertions.assertTrue(true);
+        Assertions.assertEquals(expectedFirstBalance, dashboardPage.getCardBalance(firstCard.getNumber()));
+        Assertions.assertEquals(expectedSecondBalance, dashboardPage.getCardBalance(secondCard.getNumber()));
     }
 
     @Test
-    @DisplayName("Перевод суммы, превышающей баланс: тест успешен вне зависимости от наличия ошибки")
-    void transferMoreThanAvailable_noErrorExpected() {
-        var loginPage = new LoginPage();
-        var auth = DataHelper.getAuthInfo();
-        var verificationPage = loginPage.validLogin(auth);
-        var code = DataHelper.getVerificationCodeFor(auth);
-        var dashboardPage = verificationPage.validVerify(code);
+    @DisplayName("Перевод нулевой суммы невозможен")
+    void shouldNotTransferZeroAmount() {
+        var firstCard = DataHelper.getFirstCardInfo();
+        var secondCard = DataHelper.getSecondCardInfo();
 
-        var cardFrom = DataHelper.getFirstCardInfo();
-        var cardTo = DataHelper.getSecondCardInfo();
+        int initialFirstBalance = dashboardPage.getCardBalance(firstCard.getNumber());
+        int initialSecondBalance = dashboardPage.getCardBalance(secondCard.getNumber());
 
-        int balanceFrom = dashboardPage.getCardBalance(cardFrom.getNumber());
-        int tooMuch = DataHelper.generateInvalidAmount(balanceFrom);
+        var transferPage = dashboardPage.selectCardToTransfer(secondCard.getNumber());
+        dashboardPage = transferPage.validTransfer(0, firstCard.getNumber());
 
-        var transferPage = dashboardPage.selectCardToTransfer(cardTo.getNumber());
-        transferPage.validTransfer(tooMuch, cardFrom.getNumber());
-
-        // Не проверяем наличие уведомления, просто фиксируем факт попытки
-        System.out.println("Попытка перевести сумму, превышающую остаток, выполнена.");
-        Assertions.assertTrue(true);
+        // Балансы не должны измениться
+        Assertions.assertEquals(initialFirstBalance, dashboardPage.getCardBalance(firstCard.getNumber()));
+        Assertions.assertEquals(initialSecondBalance, dashboardPage.getCardBalance(secondCard.getNumber()));
     }
 
+
     @Test
-    @DisplayName("Ошибка на неверном логине/пароле")
-    void errorOnWrongLoginOrPassword() {
-        var loginPage = new LoginPage();
-        var wrongAuth = DataHelper.getInvalidAuthInfo();
-        loginPage.invalidLogin(wrongAuth);
-        var error = loginPage.getErrorNotification();
-        if (error.exists()) {
-            error.shouldHave(com.codeborne.selenide.Condition.text("Ошибка! Неверно указан логин или пароль"));
-        } else {
-            // Если уведомления нет, тест не падает
-            Assertions.assertTrue(true);
-        }
+    @DisplayName("Перевод суммы, превышающей баланс невозможен")
+    void shouldNotTransferAmountMoreThanBalance() {
+        var firstCard = DataHelper.getFirstCardInfo();
+        var secondCard = DataHelper.getSecondCardInfo();
+
+        int firstBalance = dashboardPage.getCardBalance(firstCard.getNumber());
+        int secondBalance = dashboardPage.getCardBalance(secondCard.getNumber());
+        int invalidAmount = DataHelper.generateInvalidAmount(firstBalance);
+
+        var transferPage = dashboardPage.selectCardToTransfer(secondCard.getNumber());
+        dashboardPage = transferPage.validTransfer(invalidAmount, firstCard.getNumber());
+
+        // Балансы не должны измениться
+        Assertions.assertEquals(firstBalance, dashboardPage.getCardBalance(firstCard.getNumber()));
+        Assertions.assertEquals(secondBalance, dashboardPage.getCardBalance(secondCard.getNumber()));
     }
 }
 

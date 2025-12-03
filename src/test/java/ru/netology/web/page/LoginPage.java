@@ -23,9 +23,7 @@ public class LoginPage {
         passwordField.setValue(info.getPassword());
         loginButton.click();
     }
-    public SelenideElement getErrorNotification() {
-        return $("[data-test-id=error-notification]");
-    }
+
 }
 
 
