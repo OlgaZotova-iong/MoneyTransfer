@@ -25,15 +25,24 @@ public class DataHelper {
     }
 
     public static int generateValidAmount(int max) {
+        int absMax = Math.abs(max); // Используем модуль max
+        if (absMax < 1) {
+            absMax = 1; // Если max < 1, задаём минимум как 1
+        }
         Faker faker = new Faker(new Locale("en"));
         // Нельзя перевести 0, поэтому нижняя граница 1.
-        return faker.number().numberBetween(1, max);
+        return faker.number().numberBetween(1, absMax);
     }
 
     public static int generateInvalidAmount(int max) {
+        int absMax = Math.abs(max); // Используем модуль max
+        if (absMax < 1) {
+            absMax = 1; // Если max < 1, задаём минимум как 1
+        }
         Faker faker = new Faker(new Locale("en"));
-        return faker.number().numberBetween(max + 1, max + 1000);
+        return faker.number().numberBetween(absMax + 1, absMax + 1000);
     }
+
     public static AuthInfo getInvalidAuthInfo() {
         return new AuthInfo("invalid", "wrongpassword");
     }
